@@ -6,15 +6,8 @@
   <title>Seguimiento por Semana (HTML + JS)</title>
   <style>
     :root{
-      --bg:#0f172a;
-      --panel:#111827;
-      --muted:#1f2937;
-      --text:#e5e7eb;
-      --subtle:#9ca3af;
-      --primary:#22c55e;
-      --danger:#ef4444;
-      --accent:#3b82f6;
-      --warning:#f59e0b;
+      --bg:#0f172a; --panel:#111827; --muted:#1f2937; --text:#e5e7eb; --subtle:#9ca3af;
+      --primary:#22c55e; --danger:#ef4444; --accent:#3b82f6; --warning:#f59e0b;
     }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
@@ -28,25 +21,19 @@
     button.primary{background:var(--accent);border-color:#1d4ed8}
     button.ghost{background:transparent}
     button.success{background:var(--primary);border-color:#16a34a}
-    button.warn{background:var(--warning);border-color:#b45309}
-    button.danger{background:var(--danger);border-color:#b91c1c}
-
     .content{max-width:1100px;margin:12px auto;padding:0 16px}
     .panel{background:var(--panel);border:1px solid #1f2937;border-radius:14px;overflow:hidden}
     .panel-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #1f2937;background:#0b1220}
     .panel-header h2{margin:0;font-size:16px;color:var(--subtle)}
-
     .scroll{max-height:70vh;overflow:auto;scroll-behavior:smooth}
     .week{position:sticky;top:0;background:#0b1220;color:var(--text);padding:8px 14px;border-bottom:1px solid #1f2937;font-weight:600}
-
     table{width:100%;border-collapse:collapse}
     thead th{position:sticky;top:32px;background:#0b1220;border-bottom:1px solid #1f2937;text-align:left;font-size:12px;color:var(--subtle);padding:10px}
     tbody td{border-bottom:1px solid #1f2937;padding:10px;font-size:14px}
     .badge{display:inline-block;padding:.15rem .6rem;border-radius:999px;font-size:12px;border:1px solid #1f2937}
     .badge.ok{background:rgba(34,197,94,.1);color:var(--primary);border-color:#14532d}
     .badge.no{background:rgba(239,68,68,.1);color:var(--danger);border-color:#7f1d1d}
-    .muted{color:var(--subtle)}
-    .col-sm{width:1%;white-space:nowrap}
+    .muted{color:var(--subtle)} .col-sm{width:1%;white-space:nowrap}
   </style>
 </head>
 <body>
@@ -56,20 +43,16 @@
       <div class="toolbar">
         <div class="group">
           <label class="muted" for="fSemana">Filtrar semana</label>
-          <select id="fSemana" title="Filtrar por semana">
-            <option value="">Todas</option>
-          </select>
-          <button id="btnClear" class="ghost" title="Quitar filtro">Quitar filtro</button>
+          <select id="fSemana"><option value="">Todas</option></select>
+          <button id="btnClear" class="ghost">Quitar filtro</button>
         </div>
+        <div class="group"><input id="search" placeholder="Buscar por ID, nombre o subzona" /></div>
         <div class="group">
-          <input id="search" placeholder="Buscar por ID, nombre o subzona" />
-        </div>
-        <div class="group">
-          <button id="btnReload" class="primary" title="Cargar desde Google Sheets">Recargar</button>
-          <button id="btnExport" class="ghost" title="Exportar CSV actual">Exportar CSV</button>
+          <button id="btnReload" class="primary">Recargar</button>
+          <button id="btnExport" class="ghost">Exportar CSV</button>
         </div>
       </div>
-      <p class="muted" style="margin:8px 0 0;font-size:12px">Lee de Google Sheets. El campo <strong>estatus</strong> se puede cambiar aquí y también se actualiza en la hoja.</p>
+      <p class="muted" style="margin:8px 0 0;font-size:12px">Lee de Google Sheets y guarda cambios de estatus directamente en la hoja.</p>
     </div>
   </header>
 
@@ -83,101 +66,41 @@
     </section>
   </main>
 
-  <script>
-  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS4CvlM0-pXSqgvWc_KM4Ewx8j2Nyq7Tbb47WQrAmHwy3DDCIuYjA7qj5IxL_WO6ALGmwa174rzqqXV/pub?gid=0&single=true&output=csv";
-  const WEBAPP_URL   = "https://script.google.com/macros/s/AKfycbxY2p1KiB2APhiF5EhIp2OhBbEVYV0icdJKLC2cFBb-tM0EAHGj9meSJ_AvPbt7tIm8XA/exec";
-  const APP_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxY2p1KiB2APhiF5EhIp2OhBbEVYV0icdJKLC2cFBb-tM0EAHGj9meSJ_AvPbt7tIm8XA/exec";
+<script>
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS4CvlM0-pXSqgvWc_KM4Ewx8j2Nyq7Tbb47WQrAmHwy3DDCIuYjA7qj5IxL_WO6ALGmwa174rzqqXV/pub?gid=0&single=true&output=csv";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxY2p1KiB2APhiF5EhIp2OhBbEVYV0icdJKLC2cFBb-tM0EAHGj9meSJ_AvPbt7tIm8XA/exec";
 
-  const STORAGE_KEY = 'seguimientoDataV1';
-  function loadLocal(){ try{ const raw = localStorage.getItem(STORAGE_KEY); if(!raw) return null; return JSON.parse(raw);}catch(_){return null;} }
-  function saveLocal(arr){ localStorage.setItem(STORAGE_KEY, JSON.stringify(arr)); }
+const STORAGE_KEY='seguimientoDataV1';
+function loadLocal(){try{const raw=localStorage.getItem(STORAGE_KEY);return raw?JSON.parse(raw):null;}catch(_){return null;}}
+function saveLocal(arr){localStorage.setItem(STORAGE_KEY,JSON.stringify(arr));}
 
-  function parseWeek(semanaStr){
-    const now = new Date(); const currentYear = now.getFullYear(); let year = currentYear; let week=null;
-    if(!semanaStr) return {year,week:0,key:0,label:`${currentYear}-00`};
-    const s=String(semanaStr).trim(); const m1=s.match(/^(\d{4})[-\/]?W?(\d{1,2})$/i); const m2=s.match(/^(\d{1,2})$/);
-    if(m1){year=parseInt(m1[1],10); week=parseInt(m1[2],10);} else if(m2){week=parseInt(m2[1],10);} else {const mm=s.match(/(\d{1,2})/); week=mm?parseInt(mm[1],10):0;}
-    const key=(year*100)+(week||0); return {year,week:week||0,key,label:`${year}-${String(week||0).padStart(2,'0')}`};
-  }
-  function normalizeWeek(s){return parseWeek(s).label;}
-  function weekKey(s){return parseWeek(s).key;}
+function parseWeek(s){const now=new Date(),cy=now.getFullYear();let y=cy,w=null;if(!s)return{year:y,week:0,key:0,label:`${cy}-00`};s=String(s).trim();let m1=s.match(/^(\d{4})[-\/]?W?(\d{1,2})$/i),m2=s.match(/^(\d{1,2})$/);if(m1){y=parseInt(m1[1]);w=parseInt(m1[2]);}else if(m2){w=parseInt(m2[1]);}else{let mm=s.match(/(\d{1,2})/);w=mm?parseInt(mm[1]):0;}let key=y*100+(w||0);return{year:y,week:w||0,key,label:`${y}-${String(w||0).padStart(2,'0')}`};}
+function normalizeWeek(s){return parseWeek(s).label;} function weekKey(s){return parseWeek(s).key;}
 
-  let DATA=[]; let FILTER_WEEK=''; let SEARCH='';
+let DATA=[],FILTER_WEEK='',SEARCH='';
+const scrollArea=document.getElementById('scrollArea');const counter=document.getElementById('counter');const fSemana=document.getElementById('fSemana');const search=document.getElementById('search');
 
-  const scrollArea=document.getElementById('scrollArea');
-  const counter=document.getElementById('counter');
-  const fSemana=document.getElementById('fSemana');
-  const search=document.getElementById('search');
+function render(){let rows=DATA.slice();if(FILTER_WEEK){rows=rows.filter(r=>normalizeWeek(r.semana)===normalizeWeek(FILTER_WEEK));}if(SEARCH){const q=SEARCH.toLowerCase();rows=rows.filter(r=>r.sitioId.toLowerCase().includes(q)||r.nombre.toLowerCase().includes(q)||r.subzona.toLowerCase().includes(q));}
+ const groups=new Map();for(const r of rows){const wk=parseWeek(r.semana);if(!groups.has(wk.key))groups.set(wk.key,{label:wk.label,items:[]});groups.get(wk.key).items.push(r);}const sortedKeys=[...groups.keys()].sort((a,b)=>b-a);
+ scrollArea.innerHTML='';let total=0;for(const k of sortedKeys){const g=groups.get(k);total+=g.items.length;const weekHeader=document.createElement('div');weekHeader.className='week';weekHeader.textContent=`Semana ${g.label}`;scrollArea.appendChild(weekHeader);
+ const table=document.createElement('table');table.innerHTML=`<thead><tr><th>ID</th><th>Nombre</th><th>Subzona</th><th>Semana</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody></tbody>`;const tbody=table.querySelector('tbody');
+ for(const r of g.items){const tr=document.createElement('tr');tr.innerHTML=`<td>${r.sitioId}</td><td>${r.nombre}</td><td>${r.subzona}</td><td>${normalizeWeek(r.semana)}</td><td><span class="badge ${r.estatus==='Realizado'?'ok':'no'}">${r.estatus}</span></td><td><button class="success btnToggle" data-id="${r.rowId}">${r.estatus==='Realizado'?'Marcar NO':'Marcar SÍ'}</button></td>`;tbody.appendChild(tr);}scrollArea.appendChild(table);}counter.textContent=`${total} registro${total!==1?'s':''}`;
+ const weeks=new Set(DATA.map(r=>normalizeWeek(r.semana)));const current=fSemana.value;fSemana.innerHTML='<option value="">Todas</option>'+[...weeks].sort((a,b)=>weekKey(b)-weekKey(a)).map(w=>`<option ${w===current?'selected':''} value="${w}">${w}</option>`).join('');scrollArea.querySelectorAll('.btnToggle').forEach(btn=>btn.addEventListener('click',onToggle));}
 
-  function render(){
-    let rows=DATA.slice();
-    if(FILTER_WEEK){rows=rows.filter(r=>normalizeWeek(r.semana)===normalizeWeek(FILTER_WEEK));}
-    if(SEARCH){const q=SEARCH.toLowerCase(); rows=rows.filter(r=>String(r.sitioId).toLowerCase().includes(q)||String(r.nombre).toLowerCase().includes(q)||String(r.subzona).toLowerCase().includes(q));}
-    const groups=new Map(); for(const r of rows){const wk=parseWeek(r.semana);const key=wk.key;const label=wk.label;if(!groups.has(key)) groups.set(key,{label,items:[]}); groups.get(key).items.push(r);} const sortedKeys=Array.from(groups.keys()).sort((a,b)=>b-a);
-    scrollArea.innerHTML=''; let total=0;
-    for(const key of sortedKeys){const g=groups.get(key); total+=g.items.length; const weekHeader=document.createElement('div'); weekHeader.className='week'; weekHeader.textContent=`Semana ${g.label}`; scrollArea.appendChild(weekHeader);
-      const table=document.createElement('table'); table.innerHTML=`<thead><tr><th>ID</th><th>Nombre</th><th>Subzona</th><th>Semana</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody></tbody>`;
-      const tbody=table.querySelector('tbody');
-      for(const r of g.items){const tr=document.createElement('tr'); tr.innerHTML=`<td>${r.sitioId}</td><td>${r.nombre}</td><td>${r.subzona}</td><td>${normalizeWeek(r.semana)}</td><td><span class="badge ${r.estatus==='Realizado'?'ok':'no'}">${r.estatus}</span></td><td><button class="success btnToggle" data-id="${r.rowId}">${r.estatus==='Realizado'?'Marcar NO':'Marcar SÍ'}</button></td>`; tbody.appendChild(tr);} scrollArea.appendChild(table);}
-    counter.textContent=`${total} registro${total!==1?'s':''}`;
-    const weeks=new Set(DATA.map(r=>normalizeWeek(r.semana))); const current=fSemana.value; fSemana.innerHTML='<option value="">Todas</option>'+Array.from(weeks).sort((a,b)=>weekKey(b)-weekKey(a)).map(w=>`<option ${w===current?'selected':''} value="${w}">${w}</option>`).join('');
-    scrollArea.querySelectorAll('.btnToggle').forEach(btn=>btn.addEventListener('click',onToggle));
-  }
+async function onToggle(ev){const id=ev.currentTarget.getAttribute('data-id');const i=DATA.findIndex(r=>r.rowId===id);if(i>=0){DATA[i].estatus=DATA[i].estatus==='Realizado'?'No realizado':'Realizado';saveLocal(DATA);render();const payload={sitioId:DATA[i].sitioId,semana:normalizeWeek(DATA[i].semana),estatus:DATA[i].estatus};try{const res=await fetch(WEBAPP_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});console.log('Respuesta WebApp',await res.text());}catch(err){console.error('Error al enviar a Apps Script',err);}}}
 
-  async function onToggle(ev){
-    const id = ev.currentTarget.getAttribute('data-id');
-    const i = DATA.findIndex(r => r.rowId === id);
-    if(i>=0){
-      // 1) Cambia en UI + guarda local
-      DATA[i].estatus = DATA[i].estatus === 'Realizado' ? 'No realizado' : 'Realizado';
-      saveLocal(DATA); render();
+async function loadFromSheet(){try{const res=await fetch(SHEET_CSV_URL,{cache:'no-store'});if(!res.ok) throw new Error('No se pudo descargar CSV');const text=await res.text();const rows=parseCSV(text);const out=[];for(const r of rows){const id=r.id||r.ID||r.sitioId||r["ID SITIO"]||'';const nombre=r.nombre||r.Nombre||'';const subzona=r.subzona||r.Subzona||'';const semana=r.semana||r.Semana||'';let estatus=(r.estatus||r.Estatus||r.Estado||'No realizado').toString();estatus=/^real/i.test(estatus)?'Realizado':'No realizado';if(String(id).trim()){out.push({rowId:crypto.randomUUID(),sitioId:id,nombre,subzona,semana:normalizeWeek(semana),estatus});}}DATA=out;saveLocal(DATA);render();}catch(err){console.error('Error cargando hoja',err);}}
 
-      // 2) Enviar a Google Apps Script (escritura en hoja)
-      const payload = {
-        sitioId: DATA[i].sitioId,
-        semana: normalizeWeek(DATA[i].semana),
-        estatus: DATA[i].estatus
-      };
-      fetch(WEBAPP_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // simple request, evita CORS preflight
-        body: JSON.stringify(payload)
-      })
-      .then(r=>r.text())
-      .then(msg=>{
-        if(!/ok/i.test(msg)){
-          console.warn('Respuesta Apps Script:', msg);
-        }
-      })
-      .catch(err=>{
-        console.error('Error Apps Script', err);
-      });
-    }
-  }catch(err){console.error("Error al enviar a Google Apps Script",err);}
-    }
-  }
+function parseCSV(text){const firstLine=(text.split(/\r?\n/)[0]||'');const delim=(firstLine.match(/;/g)||[]).length>(firstLine.match(/,/g)||[]).length?';':',';const lines=text.split(/\r?\n/).filter(Boolean);if(!lines.length)return[];const headers=splitCSVLine(lines[0],delim).map(h=>h.trim());const rows=[];for(let i=1;i<lines.length;i++){const cells=splitCSVLine(lines[i],delim);const obj={};headers.forEach((h,idx)=>obj[h]=cells[idx]);rows.push(obj);}return rows;}
+function splitCSVLine(line,delim){const out=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(ch===delim&&!inQ){out.push(cur);cur='';}else cur+=ch;}out.push(cur);return out;}
 
-  async function loadFromSheet(){
-    try{
-      const res=await fetch(SHEET_CSV_URL,{cache:'no-store'});
-      if(!res.ok) throw new Error('No se pudo descargar el CSV');
-      const text=await res.text();
-      const rows=parseCSV(text); const out=[];
-      for(const r of rows){const sitioId=r.id||r.ID||r.sitioId||''; const nombre=r.nombre||r.Nombre||''; const subzona=r.subzona||r.Subzona||''; const semana=r.semana||r.Semana||''; let estatus=(r.estatus||r.Estatus||'No realizado').toString(); estatus=/^real/i.test(estatus)?'Realizado':'No realizado'; if(String(sitioId).trim()){out.push({rowId:crypto.randomUUID(),sitioId,nombre,subzona,semana:normalizeWeek(semana),estatus});}}
-      DATA=out; saveLocal(DATA); render();
-    }catch(err){alert('No se pudo cargar la hoja.'); console.error(err);}
-  }
+document.getElementById('btnExport').addEventListener('click',()=>{const lines=['id,nombre,subzona,semana,estatus'];for(const r of DATA){lines.push([r.sitioId,r.nombre,r.subzona,normalizeWeek(r.semana),r.estatus].join(','));}const blob=new Blob([lines.join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='seguimiento.csv';a.click();});
+fSemana.addEventListener('change',()=>{FILTER_WEEK=fSemana.value;render();});
+document.getElementById('btnClear').addEventListener('click',()=>{FILTER_WEEK='';fSemana.value='';render();});
+search.addEventListener('input',()=>{SEARCH=search.value;render();});
+document.getElementById('btnReload').addEventListener('click',loadFromSheet);
 
-  function parseCSV(text){const lines=text.split(/\r?\n/).filter(Boolean); if(!lines.length) return []; const headers=splitCSVLine(lines[0]).map(h=>h.trim()); const rows=[]; for(let i=1;i<lines.length;i++){const cells=splitCSVLine(lines[i]); const obj={}; headers.forEach((h,idx)=> obj[h]=cells[idx]); rows.push(obj);} return rows;}
-  function splitCSVLine(line){const out=[]; let cur=''; let inQ=false; for(let i=0;i<line.length;i++){const ch=line[i]; if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;} else inQ=!inQ;} else if(ch===','&&!inQ){out.push(cur);cur='';} else cur+=ch;} out.push(cur); return out;}
-
-  document.getElementById('btnExport').addEventListener('click',()=>{const lines=['id,nombre,subzona,semana,estatus']; for(const r of DATA){lines.push([r.sitioId,r.nombre,r.subzona,normalizeWeek(r.semana),r.estatus].join(','));} const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='seguimiento.csv'; a.click();});
-  fSemana.addEventListener('change',()=>{FILTER_WEEK=fSemana.value; render();});
-  document.getElementById('btnClear').addEventListener('click',()=>{FILTER_WEEK=''; fSemana.value=''; render();});
-  search.addEventListener('input',()=>{SEARCH=search.value; render();});
-  document.getElementById('btnReload').addEventListener('click',loadFromSheet);
-
-  (async function init(){const cached=loadLocal(); if(cached){DATA=cached; render();} await loadFromSheet();})();
-  </script>
+(async function init(){const cached=loadLocal();if(cached){DATA=cached;render();}await loadFromSheet();})();
+</script>
 </body>
 </html>
