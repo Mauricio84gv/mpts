@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Seguimiento por Semana (HTML + JS)</title>
+  <style>
+    :root{
+      --bg:#0f172a;        /* slate-900 */
+      --panel:#111827;     /* gray-900 */
+      --muted:#1f2937;     /* gray-800 */
+      --text:#e5e7eb;      /* gray-200 */
+      --subtle:#9ca3af;    /* gray-400 */
+      --primary:#22c55e;   /* green-500 */
+      --danger:#ef4444;    /* red-500 */
+      --accent:#3b82f6;    /* blue-500 */
+      --warning:#f59e0b;   /* amber-500 */
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
+    header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,var(--panel),rgba(17,24,39,.9));backdrop-filter:blur(6px);border-bottom:1px solid #1f2937}
+    .wrap{max-width:1100px;margin:0 auto;padding:16px}
+    h1{font-size:20px;margin:0 0 8px}
+    .toolbar{display:grid;grid-template-columns:1fr repeat(4,auto);gap:8px;align-items:center}
+    .toolbar .group{display:flex;gap:8px;flex-wrap:wrap}
+    select,input,button{background:#0b1220;color:var(--text);border:1px solid #263043;border-radius:10px;padding:8px 10px}
+    button{cursor:pointer}
+    button.primary{background:var(--accent);border-color:#1d4ed8}
+    button.ghost{background:transparent}
+    button.success{background:var(--primary);border-color:#16a34a}
+    button.warn{background:var(--warning);border-color:#b45309}
+    button.danger{background:var(--danger);border-color:#b91c1c}
+
+    .content{max-width:1100px;margin:12px auto;padding:0 16px}
+    .panel{background:var(--panel);border:1px solid #1f2937;border-radius:14px;overflow:hidden}
+    .panel-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #1f2937;background:#0b1220}
+    .panel-header h2{margin:0;font-size:16px;color:var(--subtle)}
+
+    .scroll{max-height:70vh;overflow:auto;scroll-behavior:smooth}
+    .week{position:sticky;top:0;background:#0b1220;color:var(--text);padding:8px 14px;border-bottom:1px solid #1f2937;font-weight:600}
+
+    table{width:100%;border-collapse:collapse}
+    thead th{position:sticky;top:32px;background:#0b1220;border-bottom:1px solid #1f2937;text-align:left;font-size:12px;color:var(--subtle);padding:10px}
+    tbody td{border-bottom:1px solid #1f2937;padding:10px;font-size:14px}
+    .status{display:inline-flex;align-items:center;gap:8px}
+    .badge{display:inline-block;padding:.15rem .6rem;border-radius:999px;font-size:12px;border:1px solid #1f2937}
+    .badge.ok{background:rgba(34,197,94,.1);color:var(--primary);border-color:#14532d}
+    .badge.no{background:rgba(239,68,68,.1);color:var(--danger);border-color:#7f1d1d}
+    .muted{color:var(--subtle)}
+    .col-sm{width:1%;white-space:nowrap}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>Seguimiento por Semana</h1>
+      <div class="toolbar">
+        <div class="group">
+          <label class="muted" for="fSemana">Filtrar semana</label>
+          <select id="fSemana" title="Filtrar por semana">
+            <option value="">Todas</option>
+          </select>
+          <button id="btnClear" class="ghost" title="Quitar filtro">Quitar filtro</button>
+        </div>
+        <div class="group">
+          <input id="search" placeholder="Buscar por ID, nombre o subzona" />
+        </div>
+        <div class="group">
+          <button id="btnReload" class="primary" title="Cargar desde Google Sheets">Recargar</button>
+          <button id="btnExport" class="primary" title="Exportar CSV">Exportar CSV</button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="content">
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Registros (semana mayor arriba)</h2>
+        <div class="muted" id="counter">0 registros</div>
+      </div>
+      <div class="scroll" id="scrollArea"></div>
+    </section>
+  </main>
+
+  <script>
+  const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS4CvlM0-pXSqgvWc_KM4Ewx8j2Nyq7Tbb47WQrAmHwy3DDCIuYjA7qj5IxL_WO6ALGmwa174rzqqXV/pub?gid=0&single=true&output=csv";
+  async function loadFromSheet(){
+    try{
+      const res = await fetch(SHEET_CSV_URL, { cache:'no-store' });
+      if(!res.ok) throw new Error('No se pudo descargar el CSV');
+      const text = await res.text();
+      const rows = parseCSV(text);
+      const out = [];
+      for(const r of rows){
+        const sitioId = r.id || r.ID || r.sitioId || '';
+        const nombre  = r.nombre || r.NOMBRE || r.Nombre || '';
+        const subzona = r.subzona || r.SUBZONA || r.Subzona || '';
+        const semana  = r.semana || r.SEMANA || r.Semana || '';
+        let estatus   = (r.estatus || r.ESTATUS || r.Estatus || 'No realizado').toString();
+        estatus = /^real/i.test(estatus) ? 'Realizado' : 'No realizado';
+        if(String(sitioId).trim()){
+          out.push({ rowId: crypto.randomUUID(), sitioId, nombre, subzona, semana: normalizeWeek(semana), estatus });
+        }
+      }
+      DATA = out;
+      render();
+    }catch(err){
+      alert('No se pudo cargar la hoja. Revisa que esté publicada como CSV.');
+      console.error(err);
+    }
+  }
+
+  function parseWeek(semanaStr){
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    let year = currentYear;
+    let week = null;
+    if(!semanaStr) return {year, week:0, key:0};
+    const s = String(semanaStr).trim();
+    const m1 = s.match(/^(\d{4})[-\/]?W?(\d{1,2})$/i);
+    const m2 = s.match(/^(\d{1,2})$/);
+    if(m1){ year = parseInt(m1[1],10); week = parseInt(m1[2],10); }
+    else if(m2){ week = parseInt(m2[1],10); }
+    else { const mm = s.match(/(\d{1,2})/); week = mm? parseInt(mm[1],10):0; }
+    const key = (year*100) + (week||0);
+    return {year, week: week||0, key, label: `${year}-${String(week||0).padStart(2,'0')}`};
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[c]));
+  }
+  function normalizeWeek(s){ return parseWeek(s).label; }
+  function weekKey(s){ return parseWeek(s).key; }
+
+  let DATA = [];
+  let FILTER_WEEK = '';
+  let SEARCH = '';
+
+  const scrollArea = document.getElementById('scrollArea');
+  const counter = document.getElementById('counter');
+  const fSemana = document.getElementById('fSemana');
+  const search = document.getElementById('search');
+
+  function render(){
+    let rows = DATA.slice();
+    if(FILTER_WEEK){ rows = rows.filter(r => normalizeWeek(r.semana) === normalizeWeek(FILTER_WEEK)); }
+    if(SEARCH){
+      const q = SEARCH.toLowerCase();
+      rows = rows.filter(r => String(r.sitioId).toLowerCase().includes(q) || String(r.nombre).toLowerCase().includes(q) || String(r.subzona).toLowerCase().includes(q));
+    }
+    const groups = new Map();
+    for(const r of rows){
+      const wk = parseWeek(r.semana); const key = wk.key; const label = wk.label;
+      if(!groups.has(key)) groups.set(key, { label, items: [] });
+      groups.get(key).items.push(r);
+    }
+    const sortedKeys = Array.from(groups.keys()).sort((a,b)=> b-a);
+
+    scrollArea.innerHTML = '';
+    let total = 0;
+    for(const key of sortedKeys){
+      const g = groups.get(key);
+      total += g.items.length;
+      const weekHeader = document.createElement('div');
+      weekHeader.className = 'week';
+      weekHeader.textContent = `Semana ${g.label}`;
+      scrollArea.appendChild(weekHeader);
+
+      const table = document.createElement('table');
+      table.innerHTML = `
+        <thead>
+          <tr>
+            <th class="col-sm">ID</th>
+            <th>Nombre</th>
+            <th>Subzona</th>
+            <th class="col-sm">Semana</th>
+            <th class="col-sm">Estatus</th>
+            <th class="col-sm">Acciones</th>
+          </tr>
+        </thead>
+        <tbody></tbody>`;
+
+      const tbody = table.querySelector('tbody');
+      for(const r of g.items){
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${escapeHtml(r.sitioId)}</td>
+          <td>${escapeHtml(r.nombre)}</td>
+          <td>${escapeHtml(r.subzona)}</td>
+          <td><span class="badge">${escapeHtml(normalizeWeek(r.semana))}</span></td>
+          <td><span class="badge ${r.estatus==='Realizado'?'ok':'no'}">${r.estatus}</span></td>
+          <td><button class="success btnToggle" data-id="${r.rowId}">${r.estatus==='Realizado'?'Marcar NO':'Marcar SÍ'}</button></td>`;
+        tbody.appendChild(tr);
+      }
+      scrollArea.appendChild(table);
+    }
+    counter.textContent = `${total} registro${total!==1?'s':''}`;
+
+    const weeks = new Set(DATA.map(r => normalizeWeek(r.semana)));
+    const current = fSemana.value;
+    fSemana.innerHTML = '<option value="">Todas</option>' + Array.from(weeks).sort((a,b)=> weekKey(b)-weekKey(a)).map(w => `<option ${w===current?'selected':''} value="${w}">${w}</option>`).join('');
+
+    scrollArea.querySelectorAll('.btnToggle').forEach(btn => btn.addEventListener('click', onToggle));
+  }
+
+  function onToggle(ev){
+    const id = ev.currentTarget.getAttribute('data-id');
+    const i = DATA.findIndex(r => r.rowId === id);
+    if(i>=0){
+      DATA[i].estatus = DATA[i].estatus === 'Realizado' ? 'No realizado' : 'Realizado';
+      render();
+    }
+  }
+
+  document.getElementById('btnReload').addEventListener('click', loadFromSheet);
+  document.getElementById('filePicker').addEventListener('change', async (e)=>{
+    const file = e.target.files[0]; if(!file) return;
+    const text = await file.text();
+    const rows = parseCSV(text);
+    const out = [];
+    for(const r of rows){
+      const sitioId = r.id ?? r.ID ?? r.sitioId ?? '';
+      const nombre  = r.nombre ?? '';
+      const subzona = r.subzona ?? '';
+      const semana  = r.semana ?? '';
+      let estatus   = (r.estatus ?? 'No realizado').toString();
+      estatus = /^real/i.test(estatus) ? 'Realizado' : 'No realizado';
+      if(String(sitioId).trim()){
+        out.push({ rowId: crypto.randomUUID(), sitioId, nombre, subzona, semana: normalizeWeek(semana), estatus });
+      }
+    }
+    if(out.length){ DATA = out; render(); }
+    e.target.value = '';
+  });
+
+  document.getElementById('btnExport').addEventListener('click', ()=>{
+    const lines = ['id,nombre,subzona,semana,estatus'];
+    for(const r of DATA){
+      lines.push([r.sitioId, r.nombre, r.subzona, normalizeWeek(r.semana), r.estatus].map(csvCell).join(','));
+    }
+    const blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8;'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'seguimiento.csv';
+    a.click();
+  });
+
+  function csvCell(v){
+    const s = String(v).replaceAll('"','""');
+    return /[",\n]/.test(s) ? '"'+s+'"' : s;
+  }
+  function parseCSV(text){
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    if(!lines.length) return [];
+    const headers = splitCSVLine(lines[0]).map(h => h.trim());
+    const rows=[];
+    for(let i=1;i<lines.length;i++){
+      const cells = splitCSVLine(lines[i]);
+      const obj={}; headers.forEach((h,idx)=> obj[h]=cells[idx]);
+      rows.push(obj);
+    }
+    return rows;
+  }
+  function splitCSVLine(line){
+    const out=[]; let cur=''; let inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch = line[i];
+      if(ch==='"'){
+        if(inQ && line[i+1]==='"'){ cur+='"'; i++; }
+        else inQ=!inQ;
+      }else if(ch===',' && !inQ){ out.push(cur); cur=''; }
+      else cur+=ch;
+    }
+    out.push(cur);
+    return out;
+  }
+
+  fSemana.addEventListener('change', ()=>{ FILTER_WEEK = fSemana.value; render(); });
+  document.getElementById('btnClear').addEventListener('click', ()=>{ FILTER_WEEK=''; fSemana.value=''; render(); });
+  search.addEventListener('input', ()=>{ SEARCH = search.value; render(); });
+
+  loadFromSheet();
+  setTimeout(()=>{ document.getElementById('scrollArea').scrollTop = 0; }, 0);
+  </script>
+</body>
+</html>
