@@ -5,7 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Seguimiento por Semana (HTML + JS)</title>
   <style>
-    :root{ --bg:#0f172a; --panel:#111827; --muted:#1f2937; --text:#e5e7eb; --subtle:#9ca3af; --primary:#22c55e; --danger:#ef4444; --accent:#3b82f6; }
+    :root{
+      --bg:#0f172a; --panel:#111827; --muted:#1f2937; --text:#e5e7eb; --subtle:#9ca3af;
+      --primary:#22c55e; --danger:#ef4444; --accent:#3b82f6; --warning:#f59e0b;
+    }
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:var(--bg);color:var(--text)}
     header{position:sticky;top:0;z-index:10;background:linear-gradient(180deg,var(--panel),rgba(17,24,39,.9));backdrop-filter:blur(6px);border-bottom:1px solid #1f2937}
@@ -18,7 +21,6 @@
     button.primary{background:var(--accent);border-color:#1d4ed8}
     button.ghost{background:transparent}
     button.success{background:var(--primary);border-color:#16a34a}
-
     .content{max-width:1100px;margin:12px auto;padding:0 16px}
     .panel{background:var(--panel);border:1px solid #1f2937;border-radius:14px;overflow:hidden}
     .panel-header{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #1f2937;background:#0b1220}
@@ -31,7 +33,7 @@
     .badge{display:inline-block;padding:.15rem .6rem;border-radius:999px;font-size:12px;border:1px solid #1f2937}
     .badge.ok{background:rgba(34,197,94,.1);color:var(--primary);border-color:#14532d}
     .badge.no{background:rgba(239,68,68,.1);color:var(--danger);border-color:#7f1d1d}
-    .muted{color:var(--subtle)}
+    .muted{color:var(--subtle)} .col-sm{width:1%;white-space:nowrap}
   </style>
 </head>
 <body>
@@ -44,17 +46,13 @@
           <select id="fSemana"><option value="">Todas</option></select>
           <button id="btnClear" class="ghost">Quitar filtro</button>
         </div>
-        <div class="group">
-          <input id="search" placeholder="Buscar por ID, nombre o subzona" />
-        </div>
+        <div class="group"><input id="search" placeholder="Buscar por ID, nombre o subzona" /></div>
         <div class="group">
           <button id="btnReload" class="primary">Recargar</button>
           <button id="btnExport" class="ghost">Exportar CSV</button>
         </div>
       </div>
-      <p class="muted" style="margin:8px 0 0;font-size:12px">
-        Lee de Google Sheets y guarda cambios de estatus directamente en la hoja.
-      </p>
+      <p class="muted" style="margin:8px 0 0;font-size:12px">Lee de Google Sheets y guarda cambios de estatus directamente en la hoja.</p>
     </div>
   </header>
 
@@ -69,215 +67,40 @@
   </main>
 
 <script>
-/*** CONFIG ***/
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vS4CvlM0-pXSqgvWc_KM4Ewx8j2Nyq7Tbb47WQrAmHwy3DDCIuYjA7qj5IxL_WO6ALGmwa174rzqqXV/pub?gid=0&single=true&output=csv";
-const WEBAPP_URL    = "https://script.google.com/macros/s/AKfycbxY2p1KiB2APhiF5EhIp2OhBbEVYV0icdJKLC2cFBb-tM0EAHGj9meSJ_AvPbt7tIm8XA/exec";
+const WEBAPP_URL = "https://script.google.com/macros/s/AKfycbxY2p1KiB2APhiF5EhIp2OhBbEVYV0icdJKLC2cFBb-tM0EAHGj9meSJ_AvPbt7tIm8XA/exec";
 
-/*** Persistencia local (cache y estatus) ***/
 const STORAGE_KEY='seguimientoDataV1';
-const loadLocal=()=>{ try{const raw=localStorage.getItem(STORAGE_KEY);return raw?JSON.parse(raw):null;}catch(_){return null;} }
-const saveLocal=(arr)=> localStorage.setItem(STORAGE_KEY,JSON.stringify(arr));
+function loadLocal(){try{const raw=localStorage.getItem(STORAGE_KEY);return raw?JSON.parse(raw):null;}catch(_){return null;}}
+function saveLocal(arr){localStorage.setItem(STORAGE_KEY,JSON.stringify(arr));}
 
-/*** Utilidades de semana ***/
-function parseWeek(s){
-  const now=new Date(),cy=now.getFullYear(); let y=cy,w=null;
-  if(!s) return {year:y,week:0,key:0,label:`${cy}-00`};
-  s=String(s).trim();
-  const m1=s.match(/^(\d{4})[-\/]?W?(\d{1,2})$/i), m2=s.match(/^(\d{1,2})$/);
-  if(m1){ y=parseInt(m1[1],10); w=parseInt(m1[2],10); }
-  else if(m2){ w=parseInt(m2[1],10); }
-  else { const mm=s.match(/(\d{1,2})/); w = mm?parseInt(mm[1],10):0; }
-  const key=y*100+(w||0);
-  return {year:y,week:w||0,key,label:`${y}-${String(w||0).padStart(2,'0')}`};
-}
-const normalizeWeek=(s)=>parseWeek(s).label;
-const weekKey=(s)=>parseWeek(s).key;
+function parseWeek(s){const now=new Date(),cy=now.getFullYear();let y=cy,w=null;if(!s)return{year:y,week:0,key:0,label:`${cy}-00`};s=String(s).trim();let m1=s.match(/^(\d{4})[-\/]?W?(\d{1,2})$/i),m2=s.match(/^(\d{1,2})$/);if(m1){y=parseInt(m1[1]);w=parseInt(m1[2]);}else if(m2){w=parseInt(m2[1]);}else{let mm=s.match(/(\d{1,2})/);w=mm?parseInt(mm[1]):0;}let key=y*100+(w||0);return{year:y,week:w||0,key,label:`${y}-${String(w||0).padStart(2,'0')}`};}
+function normalizeWeek(s){return parseWeek(s).label;} function weekKey(s){return parseWeek(s).key;}
 
-// normaliza encabezados y calcula semana desde fecha si hace falta
-const nkey=(k)=>String(k||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-function isoWeekFromDate(d){
-  const date=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
-  const dayNum=(date.getUTCDay()+6)%7; date.setUTCDate(date.getUTCDate()-dayNum+3);
-  const firstThursday=new Date(Date.UTC(date.getUTCFullYear(),0,4));
-  const week=1+Math.round(((date-firstThursday)/86400000-3+((firstThursday.getUTCDay()+6)%7))/7);
-  const year=date.getUTCFullYear(); return {year,week};
-}
-function weekFromDateString(s){
-  if(!s) return '';
-  const parse=(t)=>{ const d=new Date(t); return isNaN(d)?null:d; };
-  let d=parse(s);
-  if(!d){
-    const m=s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
-    if(m){ const dd=+m[1], mm=+m[2]-1, yy=m[3].length===2?2000+(+m[3]):+m[3]; d=new Date(yy,mm,dd); }
-  }
-  if(!d) return '';
-  const {year,week}=isoWeekFromDate(d);
-  return `${year}-${String(week).padStart(2,'0')}`;
-}
+let DATA=[],FILTER_WEEK='',SEARCH='';
+const scrollArea=document.getElementById('scrollArea');const counter=document.getElementById('counter');const fSemana=document.getElementById('fSemana');const search=document.getElementById('search');
 
-/*** Estado y refs ***/
-let DATA=[], FILTER_WEEK='', SEARCH='';
-const scrollArea=document.getElementById('scrollArea');
-const counter=document.getElementById('counter');
-const fSemana=document.getElementById('fSemana');
-const search=document.getElementById('search');
+function render(){let rows=DATA.slice();if(FILTER_WEEK){rows=rows.filter(r=>normalizeWeek(r.semana)===normalizeWeek(FILTER_WEEK));}if(SEARCH){const q=SEARCH.toLowerCase();rows=rows.filter(r=>r.sitioId.toLowerCase().includes(q)||r.nombre.toLowerCase().includes(q)||r.subzona.toLowerCase().includes(q));}
+ const groups=new Map();for(const r of rows){const wk=parseWeek(r.semana);if(!groups.has(wk.key))groups.set(wk.key,{label:wk.label,items:[]});groups.get(wk.key).items.push(r);}const sortedKeys=[...groups.keys()].sort((a,b)=>b-a);
+ scrollArea.innerHTML='';let total=0;for(const k of sortedKeys){const g=groups.get(k);total+=g.items.length;const weekHeader=document.createElement('div');weekHeader.className='week';weekHeader.textContent=`Semana ${g.label}`;scrollArea.appendChild(weekHeader);
+ const table=document.createElement('table');table.innerHTML=`<thead><tr><th>ID</th><th>Nombre</th><th>Subzona</th><th>Semana</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody></tbody>`;const tbody=table.querySelector('tbody');
+ for(const r of g.items){const tr=document.createElement('tr');tr.innerHTML=`<td>${r.sitioId}</td><td>${r.nombre}</td><td>${r.subzona}</td><td>${normalizeWeek(r.semana)}</td><td><span class="badge ${r.estatus==='Realizado'?'ok':'no'}">${r.estatus}</span></td><td><button class="success btnToggle" data-id="${r.rowId}">${r.estatus==='Realizado'?'Marcar NO':'Marcar SÍ'}</button></td>`;tbody.appendChild(tr);}scrollArea.appendChild(table);}counter.textContent=`${total} registro${total!==1?'s':''}`;
+ const weeks=new Set(DATA.map(r=>normalizeWeek(r.semana)));const current=fSemana.value;fSemana.innerHTML='<option value="">Todas</option>'+[...weeks].sort((a,b)=>weekKey(b)-weekKey(a)).map(w=>`<option ${w===current?'selected':''} value="${w}">${w}</option>`).join('');scrollArea.querySelectorAll('.btnToggle').forEach(btn=>btn.addEventListener('click',onToggle));}
 
-/*** Render ***/
-function render(){
-  let rows=DATA.slice();
-  if(FILTER_WEEK){ rows=rows.filter(r=>normalizeWeek(r.semana)===normalizeWeek(FILTER_WEEK)); }
-  if(SEARCH){
-    const q=SEARCH.toLowerCase();
-    rows=rows.filter(r=>String(r.sitioId).toLowerCase().includes(q)||String(r.nombre).toLowerCase().includes(q)||String(r.subzona).toLowerCase().includes(q));
-  }
-  const groups=new Map();
-  for(const r of rows){
-    const wk=parseWeek(r.semana); if(!groups.has(wk.key)) groups.set(wk.key,{label:wk.label,items:[]});
-    groups.get(wk.key).items.push(r);
-  }
-  const order=[...groups.keys()].sort((a,b)=>b-a);
-  scrollArea.innerHTML=''; let total=0;
+async function onToggle(ev){const id=ev.currentTarget.getAttribute('data-id');const i=DATA.findIndex(r=>r.rowId===id);if(i>=0){DATA[i].estatus=DATA[i].estatus==='Realizado'?'No realizado':'Realizado';saveLocal(DATA);render();const payload={sitioId:DATA[i].sitioId,semana:normalizeWeek(DATA[i].semana),estatus:DATA[i].estatus};try{const res=await fetch(WEBAPP_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const txt=await res.text();console.log('Respuesta WebApp',txt);await loadFromSheet();}catch(err){console.error('Error al enviar a Apps Script',err);}}}
 
-  for(const k of order){
-    const g=groups.get(k); total+=g.items.length;
-    const weekHeader=document.createElement('div');
-    weekHeader.className='week'; weekHeader.textContent=`Semana ${g.label}`;
-    scrollArea.appendChild(weekHeader);
+async function loadFromSheet(){try{const res=await fetch(SHEET_CSV_URL,{cache:'no-store'});if(!res.ok) throw new Error('No se pudo descargar CSV');const text=await res.text();const rows=parseCSV(text);const out=[];for(const r of rows){const id=r.id||r.ID||r.sitioId||r["ID SITIO"]||'';const nombre=r.nombre||r.Nombre||'';const subzona=r.subzona||r.Subzona||'';const semana=r.semana||r.Semana||'';let estatus=(r.estatus||r.Estatus||r.Estado||'No realizado').toString();estatus=/^real/i.test(estatus)?'Realizado':'No realizado';if(String(id).trim()){out.push({rowId:crypto.randomUUID(),sitioId:id,nombre,subzona,semana:normalizeWeek(semana),estatus});}}DATA=out;saveLocal(DATA);render();}catch(err){console.error('Error cargando hoja',err);}}
 
-    const table=document.createElement('table');
-    table.innerHTML=`<thead><tr><th>ID</th><th>Nombre</th><th>Subzona</th><th>Semana</th><th>Estatus</th><th>Acciones</th></tr></thead><tbody></tbody>`;
-    const tbody=table.querySelector('tbody');
+function parseCSV(text){const firstLine=(text.split(/\r?\n/)[0]||'');const delim=(firstLine.match(/;/g)||[]).length>(firstLine.match(/,/g)||[]).length?';':',';const lines=text.split(/\r?\n/).filter(Boolean);if(!lines.length)return[];const headers=splitCSVLine(lines[0],delim).map(h=>h.trim());const rows=[];for(let i=1;i<lines.length;i++){const cells=splitCSVLine(lines[i],delim);const obj={};headers.forEach((h,idx)=>obj[h]=cells[idx]);rows.push(obj);}return rows;}
+function splitCSVLine(line,delim){const out=[];let cur='',inQ=false;for(let i=0;i<line.length;i++){const ch=line[i];if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else inQ=!inQ;}else if(ch===delim&&!inQ){out.push(cur);cur='';}else cur+=ch;}out.push(cur);return out;}
 
-    for(const r of g.items){
-      const tr=document.createElement('tr');
-      tr.innerHTML=`
-        <td>${r.sitioId}</td>
-        <td>${r.nombre}</td>
-        <td>${r.subzona}</td>
-        <td>${normalizeWeek(r.semana)}</td>
-        <td><span class="badge ${r.estatus==='Realizado'?'ok':'no'}">${r.estatus}</span></td>
-        <td><button class="success btnToggle" data-id="${r.rowId}">${r.estatus==='Realizado'?'Marcar NO':'Marcar SÍ'}</button></td>`;
-      tbody.appendChild(tr);
-    }
-    scrollArea.appendChild(table);
-  }
-
-  counter.textContent=`${total} registro${total!==1?'s':''}`;
-
-  const weeks=new Set(DATA.map(r=>normalizeWeek(r.semana)));
-  const current=fSemana.value;
-  fSemana.innerHTML='<option value="">Todas</option>'+[...weeks].sort((a,b)=>weekKey(b)-weekKey(a)).map(w=>`<option ${w===current?'selected':''} value="${w}">${w}</option>`).join('');
-
-  scrollArea.querySelectorAll('.btnToggle').forEach(btn=>btn.addEventListener('click',onToggle));
-}
-
-/*** Toggle + escritura en la hoja ***/
-async function onToggle(ev){
-  const id=ev.currentTarget.getAttribute('data-id');
-  const i=DATA.findIndex(r=>r.rowId===id);
-  if(i<0) return;
-
-  DATA[i].estatus = DATA[i].estatus==='Realizado' ? 'No realizado' : 'Realizado';
-  saveLocal(DATA); render();
-
-  const payload = {
-    sitioId: DATA[i].sitioId,
-    semana:  normalizeWeek(DATA[i].semana),
-    estatus: DATA[i].estatus
-  };
-  try{
-    const res = await fetch(WEBAPP_URL, {
-      method:'POST',
-      headers:{'Content-Type':'text/plain;charset=utf-8'}, // evita preflight
-      body: JSON.stringify(payload)
-    });
-    console.log('Apps Script ->', await res.text());
-  }catch(err){
-    console.error('Error Apps Script', err);
-  }
-}
-
-/*** Carga desde Google Sheets (CSV) ***/
-async function loadFromSheet(){
-  try{
-    const res=await fetch(SHEET_CSV_URL,{cache:'no-store'});
-    if(!res.ok) throw new Error('No se pudo descargar CSV');
-    const text=await res.text();
-    const rows=parseCSV(text);
-
-    const out=[];
-    for(const r of rows){
-      // Normaliza encabezados
-      const rec={}; for(const k in r){ rec[nkey(k)] = r[k]; }
-
-      const id      = rec['id']||rec['idsitio']||rec['sitioid']||rec['sitio']||rec['codigo']||'';
-      const nombre  = rec['nombre']||rec['nombresitio']||rec['site']||'';
-      const subzona = rec['subzona']||rec['sub-zona']||rec['zona']||'';
-
-      let semana    = rec['semana']||rec['semanamayor']||rec['semanamayos']||rec['sem']||rec['week']||rec['semanaisoweek']||'';
-      if(!semana){
-        const f = rec['fecha']||rec['fechavisita']||rec['fechainicio']||rec['dia']||'';
-        const w = weekFromDateString(f);
-        if(w) semana = w;
-      }
-
-      let estatus   = (rec['estatus']||rec['status']||rec['estado']||'No realizado').toString();
-      estatus       = /^real/i.test(estatus) ? 'Realizado' : 'No realizado';
-
-      if(String(id).trim()){
-        out.push({ rowId: crypto.randomUUID(), sitioId:id, nombre:nombre||'', subzona:subzona||'', semana: normalizeWeek(semana||''), estatus });
-      }
-    }
-    DATA=out; saveLocal(DATA); render();
-  }catch(err){
-    console.error('Error cargando hoja', err);
-  }
-}
-
-/*** CSV parser (coma o punto y coma) ***/
-function parseCSV(text){
-  const firstLine=(text.split(/\r?\n/)[0]||'');
-  const delim=(firstLine.match(/;/g)||[]).length>(firstLine.match(/,/g)||[]).length?';':',';
-  const lines=text.split(/\r?\n/).filter(Boolean);
-  if(!lines.length) return [];
-  const headers=splitCSVLine(lines[0],delim).map(h=>h.trim());
-  const rows=[];
-  for(let i=1;i<lines.length;i++){
-    const cells=splitCSVLine(lines[i],delim);
-    const obj={}; headers.forEach((h,idx)=> obj[h]=cells[idx]);
-    rows.push(obj);
-  }
-  return rows;
-}
-function splitCSVLine(line,delim){
-  const out=[]; let cur='', inQ=false;
-  for(let i=0;i<line.length;i++){
-    const ch=line[i];
-    if(ch==='"'){ if(inQ && line[i+1]==='"'){ cur+='"'; i++; } else inQ=!inQ; }
-    else if(ch===delim && !inQ){ out.push(cur); cur=''; }
-    else cur+=ch;
-  }
-  out.push(cur);
-  return out;
-}
-
-/*** Eventos ***/
-document.getElementById('btnExport').addEventListener('click', ()=>{
-  const lines=['id,nombre,subzona,semana,estatus'];
-  for(const r of DATA){ lines.push([r.sitioId,r.nombre,r.subzona,normalizeWeek(r.semana),r.estatus].join(',')); }
-  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='seguimiento.csv'; a.click();
-});
-fSemana.addEventListener('change',()=>{ FILTER_WEEK=fSemana.value; render(); });
-document.getElementById('btnClear').addEventListener('click',()=>{ FILTER_WEEK=''; fSemana.value=''; render(); });
-search.addEventListener('input',()=>{ SEARCH=search.value; render(); });
+document.getElementById('btnExport').addEventListener('click',()=>{const lines=['id,nombre,subzona,semana,estatus'];for(const r of DATA){lines.push([r.sitioId,r.nombre,r.subzona,normalizeWeek(r.semana),r.estatus].join(','));}const blob=new Blob([lines.join('\n')],{type:'text/csv'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='seguimiento.csv';a.click();});
+fSemana.addEventListener('change',()=>{FILTER_WEEK=fSemana.value;render();});
+document.getElementById('btnClear').addEventListener('click',()=>{FILTER_WEEK='';fSemana.value='';render();});
+search.addEventListener('input',()=>{SEARCH=search.value;render();});
 document.getElementById('btnReload').addEventListener('click',loadFromSheet);
 
-/*** Inicio ***/
-(async function init(){
-  const cached=loadLocal(); if(cached){ DATA=cached; render(); }
-  await loadFromSheet();
-})();
+(async function init(){await loadFromSheet();})();
 </script>
 </body>
 </html>
