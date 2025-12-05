@@ -48,7 +48,7 @@
     .badge.no{background:rgba(239,68,68,.1);color:var(--danger);border-color:#7f1d1d}
     .muted{color:var(--subtle)}
     .col-sm{width:1%;white-space:nowrap}
-    /* Añadido para mejor simetría de Subzona */
+    /* Clase de estilo para RDA y Subzona */
     .col-subzona{width:15%;} 
   </style>
 </head>
@@ -99,14 +99,13 @@
       for(const r of rows){
         const sitioId = r.id || r.ID || r.sitioId || '';
         const nombre  = r.nombre || r.NOMBRE || r.Nombre || '';
-        const rda     = r.rda || r.RDA || r.Rda || ''; // AÑADIDO: Captura RDA
+        const rda     = r.rda || r.RDA || r.Rda || ''; // Captura RDA
         const subzona = r.subzona || r.SUBZONA || r.Subzona || '';
         const semana  = r.semana || r.SEMANA || r.Semana || '';
         let estatus   = (r.estatus || r.ESTATUS || r.Estatus || 'No realizado').toString();
         estatus = /^real/i.test(estatus) ? 'Realizado' : 'No realizado';
         
         if(String(sitioId).trim()){
-          // AÑADIDO: rda al objeto de datos
           out.push({ rowId: crypto.randomUUID(), sitioId, nombre, rda, subzona, semana: normalizeWeek(semana), estatus });
         }
       }
@@ -154,7 +153,6 @@
     if(FILTER_WEEK){ rows = rows.filter(r => normalizeWeek(r.semana) === normalizeWeek(FILTER_WEEK)); }
     if(SEARCH){
       const q = SEARCH.toLowerCase();
-      // MODIFICADO: Incluye 'rda' en la búsqueda
       rows = rows.filter(r => String(r.sitioId).toLowerCase().includes(q) || String(r.nombre).toLowerCase().includes(q) || String(r.subzona).toLowerCase().includes(q) || String(r.rda).toLowerCase().includes(q));
     }
     const groups = new Map();
@@ -176,13 +174,13 @@
       scrollArea.appendChild(weekHeader);
 
       const table = document.createElement('table');
-      // MODIFICADO: Estructura de encabezado de tabla para incluir RDA y clase col-subzona
+      // CORREGIDO: Ambos RDA y Subzona usan la clase col-subzona
       table.innerHTML = `
         <thead>
           <tr>
             <th class="col-sm">ID</th>
             <th>Nombre</th>
-            <th>RDA</th> 
+            <th class="col-subzona">RDA</th> 
             <th class="col-subzona">Subzona</th>
             <th class="col-sm">Semana</th>
             <th class="col-sm">Estatus</th>
@@ -194,7 +192,6 @@
       const tbody = table.querySelector('tbody');
       for(const r of g.items){
         const tr = document.createElement('tr');
-        // MODIFICADO: Estructura de fila de tabla para incluir el valor RDA
         tr.innerHTML = `
           <td>${escapeHtml(r.sitioId)}</td>
           <td>${escapeHtml(r.nombre)}</td>
@@ -247,7 +244,6 @@
   });
 
   document.getElementById('btnExport').addEventListener('click', ()=>{
-    // MODIFICADO: Incluye 'rda' en la exportación CSV
     const lines = ['id,nombre,rda,subzona,semana,estatus'];
     for(const r of DATA){
       lines.push([r.sitioId, r.nombre, r.rda, r.subzona, normalizeWeek(r.semana), r.estatus].map(csvCell).join(','));
